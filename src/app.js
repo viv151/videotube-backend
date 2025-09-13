@@ -19,6 +19,18 @@ app.use(express.urlencoded({extended: true, limit: "16kb"}))
 app.use(express.static("public"))
 
 
+//routes import
+
+import userRouter from "./routes/user.routes.js" 
+
+
+//routes declaration
+app.use("/api/v1/users", userRouter) //when user types /user , middleware gives the control to user router
+//uerRouter goes to its file and then router takes user where to go
+
+
+//http://localhost:8000/api/v1/user/register  - user is prefixed and the regitser is added after /users
+
 
 
 export { app }
