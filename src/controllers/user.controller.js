@@ -316,7 +316,7 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 
     return res
         .status(200)
-        .json(200, req.user, "Current user fetched successfully")
+        .json(new ApiResponse(200, req.user, "Current user fetched successfully"))
 })
 
 
@@ -356,6 +356,8 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     //here we are trying to get path of a file and not the entire files array we are accessing
     const avatarLocalPath = req.file?.path
 
+
+
     if (!avatarLocalPath) {
         throw new ApiError(400, "Avatar file is missing")
     }
@@ -363,10 +365,14 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     //upload new file on cloudinary
     const avatar = await uploadOnCloudinary(avatarLocalPath);
 
+
+
     //if url not found
     if (!avatar.url) {
         throw new ApiError(400, "Error while uploading avatar")
     }
+
+    //todo - delete old image
 
     const user = await User.findByIdAndUpdate(
         req.user?._id,
@@ -378,6 +384,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
         new: true
     }
     ).select("-password")
+
 
     return res
         .status(200)
@@ -428,6 +435,87 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 })
 
 
+//number of subscribers
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+    //get username
+    const { username } = req.params;
+
+    //check if username exists in params
+    if (!username?.trim()) {
+        throw new ApiError(400, "Username is missing")
+    }
+
+    const channel = await User.aggregate([
+        //this returns a filtered document
+        {
+            $match: {
+                username: username?.toLowerCase
+            }
+        },
+        //now we apply a lookup on these docs
+        //we lookup from the 
+        {
+            $lookup: {
+                from: "subscriptions", //look for this table
+                localField: "_id", //match through id
+                foreignField: "channel", // use channel, this is how we find subscribers
+                as: "subscribers"
+            }
+        },
+        {
+            $lookup: {
+                from: "subscriptions", //look for this table
+                localField: "_id", //match through id
+                foreignField: "subscriber", // use subscriber, this is how we find what channels we have subscribed to
+                as: "subscribedTo"
+            }
+        },
+        {
+            $addFields: {
+                subsribersCount: {
+                    $size: "$subscribers"
+                },
+                channelsSubscribedToCount: {
+                    $size: "$subscribedTo"
+                },
+                isSubscribed: {
+                    $cond: {
+                        if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+                        then: true,
+                        else: false
+                    }
+                }
+            }
+        },
+        {
+            $project: {
+                fullName: 1, //1 means the flag is set to true
+                username: 1,
+                subsribersCount: 1,
+                channelsSubscribedToCount: 1,
+                isSubscribed: 1,
+                avatar: 1,
+                coverImage: 1,
+                email: 1
+            }
+        }
+    ])
+
+    //if channel exists
+    if(!channel?.length){
+        throw new ApiError(404, "Channel doesnt exist")
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, channel[0], "User Channel fetched successfully")
+        )
+
+
+})
+
+
 export {
     registerUser,
     loginUser,
@@ -437,5 +525,6 @@ export {
     getCurrentUser,
     updateAccountDetails,
     updateUserAvatar,
-    updateUserCoverImage
+    updateUserCoverImage,
+    getUserChannelProfile
 }  
