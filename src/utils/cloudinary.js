@@ -1,5 +1,4 @@
 import { v2 as cloudinary } from "cloudinary";
-import { response } from "express";
 import fs from "fs"
 
 
@@ -14,10 +13,25 @@ const uploadOnCloudinary = async (localFilePath) => {
         //file uploaded successfully'
         fs.unlinkSync(localFilePath) //remove the file from local after it has been uploaded on the cloud
         // console.log("File uploaded on cloudinary successfully", response.url) //response contains many things url is one of them
+        console.log(response);
         return response;
+
     } catch (error) {
         fs.unlinkSync(localFilePath) //remove the locally saved temp file as the upload operation got failed
         return null;
+    }
+}
+
+const deleteOldFileAfterUpdate = async (public_id) => {
+    try {
+        if (!public_id) return null;
+
+        await cloudinary.uploader.destroy(public_id, {
+            resource_type: "auto"
+        })
+
+    } catch (error) {
+        throw new ApiError(500, error?.message || "Failed to delete the old image")
     }
 }
 
@@ -27,4 +41,4 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-export { uploadOnCloudinary }
+export { uploadOnCloudinary, deleteOldFileAfterUpdate }
