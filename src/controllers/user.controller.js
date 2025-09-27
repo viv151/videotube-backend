@@ -4,6 +4,7 @@ import { User } from "../models/user.models.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import jwt from "jsonwebtoken"
+import mongoose from "mongoose"
 
 const generateAccessAndRefreshTokens = async (userId) => {
     try {
@@ -502,7 +503,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     ])
 
     //if channel exists
-    if(!channel?.length){
+    if (!channel?.length) {
         throw new ApiError(404, "Channel doesnt exist")
     }
 
@@ -513,6 +514,69 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
         )
 
 
+})
+
+//get watch history
+
+const getWatchHistory = asyncHandler(async (req, res) => {
+    const user = await User.aggregate([
+        {
+            $match: {
+                // _id: req.user._id // returns a string , not the actual object id
+                _id: new mongoose.Types.ObjectId(req.user._id)
+            }
+        },
+        {
+            $lookup: {
+                from: "videos",
+                localField: "watchHistory",
+                foreignField: "_id",
+                as: "watchHistory",
+
+                //writing sub-pipelines
+                //find all users/owners
+                pipeline: [
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "users",
+                            foreignField: "_id",
+                            as: "owner",
+                            //remove data which we dont require from the users document
+                            //the data below stays in the owner field only. 
+                            pipeline: [
+                                {
+                                    $project: {
+                                        fullName: 1,
+                                        username: 1,
+                                        avatar: 1
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        $addFields: {
+                            //overriding existing owner field to get 0th element of the owner array only
+                            owner: {
+                                $first: "$owner"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ])
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                user[0].watchHistory,
+                "Watch history fetched successfully"
+            )
+        )
 })
 
 
@@ -526,5 +590,6 @@ export {
     updateAccountDetails,
     updateUserAvatar,
     updateUserCoverImage,
-    getUserChannelProfile
+    getUserChannelProfile,
+    getWatchHistory
 }  
