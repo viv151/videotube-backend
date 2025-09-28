@@ -203,8 +203,11 @@ const logoutUser = asyncHandler(async (req, res) => {
         req.user._id,
         // then provide what to set
         {
-            $set: {
-                refreshToken: undefined
+            // $set: {
+            //     refreshToken: undefined
+            // }
+            $unset: {
+                refreshToken: 1
             }
         },//provide new as true so the new object is received and not the old one in which refeshToken still exists
         {
@@ -356,8 +359,6 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
 const updateUserAvatar = asyncHandler(async (req, res) => {
     //here we are trying to get path of a file and not the entire files array we are accessing
     const avatarLocalPath = req.file?.path
-
-
 
     if (!avatarLocalPath) {
         throw new ApiError(400, "Avatar file is missing")
@@ -523,8 +524,9 @@ const getWatchHistory = asyncHandler(async (req, res) => {
         {
             $match: {
                 // _id: req.user._id // returns a string , not the actual object id
-                _id: new mongoose.Types.ObjectId(req.user._id)
-            }
+                _id: new mongoose.Types.ObjectId(req.user._id),
+            },
+           
         },
         {
             $lookup: {
