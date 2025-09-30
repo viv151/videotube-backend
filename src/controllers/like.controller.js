@@ -1,4 +1,4 @@
-import mongoose, { isValidObjectId } from "mongoose"
+import mongoose from "mongoose"
 import { Like } from "../models/like.models.js"
 import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
@@ -128,7 +128,7 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
             .json(new ApiResponse(200, null, "Tweet unliked successfully"))
     } else {
         //create like if doesnt exist
-        const newLike = Like.create({
+        const newLike = await Like.create({
             tweet: tweetId,
             likedBy: userId
         })
@@ -140,7 +140,7 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
 }
 )
 
-const getLikedVideos = asyncHandler(async (req, res) => {
+const getLikedVideos = asyncHandler(async (req, res) => {   
     //TODO: get all liked videos
     const userId = req.user?._id;
     if (!userId) {
